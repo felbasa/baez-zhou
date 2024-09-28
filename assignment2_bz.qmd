@@ -1,8 +1,99 @@
 ---
-title: "Assignment 2"
-author: "Félix Báez-Santiago and Gloria Zhou"
+title: "Assignment 2 by Félix Báez-Santiago and Gloria Zhou"
+subtitle: "Due at 11:59pm on October 1."
 format: html
 editor: visual
 ---
 
 ## 
+
+You may work in pairs or individually for this assignment. Make sure you join a group in Canvas if you are working in pairs. Turn in this assignment as an HTML or PDF file to ELMS. Make sure to include the R Markdown or Quarto file that was used to generate it.
+
+```{r, message = FALSE}
+library(tidyverse)
+library(gtrendsR)
+library(censusapi)
+library(dplyr)
+```
+
+In this assignment, you will pull from APIs to get data from various data sources and use your data wrangling skills to use them all together. You should turn in a report in PDF or HTML format that addresses all of the questions in this assignment, and describes the data that you pulled and analyzed. You do not need to include full introduction and conclusion sections like a full report, but you should make sure to answer the questions in paragraph form, and include all relevant tables and graphics.
+
+Whenever possible, use piping and `dplyr`. Avoid hard-coding any numbers within the report as much as possible.
+
+## Pulling from APIs
+
+Our first data source is the Google Trends API. Suppose we are interested in the search trends for `crime` and `loans` in Illinois in the year 2020. We could find this using the following code:
+
+```{r}
+res <- gtrends(c("crime", "loans"), 
+               geo = "US-IL", 
+               time = "2020-01-01 2020-12-31", 
+               low_search_volume = TRUE)
+interest_over_time <- data.frame(res$interest_over_time)
+interest_by_dma <- data.frame(res$interest_by_dma)
+interest_by_city <- data.frame(res$interest_by_city)
+head(interest_over_time)
+head(interest_by_dma)
+head(interest_by_city)
+```
+
+Answer the following questions for the keywords "crime" and "loans".
+
+-   Find the mean, median and variance of the search hits for the keywords.
+
+```{r}
+interest_over_time %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
+
+interest_by_dma %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
+
+interest_by_city %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
+```
+
+-   Which cities (locations) have the highest search frequency for `loans`? Note that there might be multiple rows for each city if there were hits for both "crime" and "loans" in that city. It might be easier to answer this question if we had the search hits info for both search terms in two separate variables. That is, each row would represent a unique city.
+
+    ```{r}
+    highest_search_frequency <- interest_by_city %>% # search in city dataset
+      na.omit() %>% # remove null values
+      filter(keyword == "loans") %>% # filter for only rows searches for loans
+      transmute(
+        location,
+        freq = hits / sum(hits)
+        ) %>% #  select city and create frequency variable
+      arrange(desc(freq)) # arrange in descending order of search frequency 
+    head(highest_search_frequency, 10)
+
+    ggplot(highest_search_frequency, aes(x = reorder(location, -freq), y = freq)) +
+      geom_bar(stat = "identity", fill = "steelblue") +
+      labs(x = "City in Illinois (Location)", y = "Search Frequency for Loan", title = "Which cities have the highest search frequency for loans?") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    ```
+
+*The mean of the search hits for the keyword 'crime' is 50.51, and the median is 50, with variance of 70.14. The mean of the search hits for the keyword 'loans' is 61.57, and the median is 58, with variance of 100.86.*
+
+-   Which cities (locations) have the highest search frequency for `loans`? Note that there might be multiple rows for each city if there were hits for both "crime" and "loans" in that city. It might be easier to answer this question if we had the search hits info for both search terms in two separate variables. That is, each row would represent a unique city.
+
+    ```{r}
+
+    ```
