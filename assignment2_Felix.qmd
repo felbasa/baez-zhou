@@ -73,6 +73,25 @@ Answer the following questions for the keywords "crime" and "loans".
 
 -   Which cities (locations) have the highest search frequency for `loans`? Note that there might be multiple rows for each city if there were hits for both "crime" and "loans" in that city. It might be easier to answer this question if we had the search hits info for both search terms in two separate variables. That is, each row would represent a unique city.
 
+    ```{r}
+    highest_search_frequency <- interest_by_city %>% # search in city dataset
+      na.omit() %>% # remove null values
+      filter(keyword == "loans") %>% # filter for only rows searches for loans
+      transmute(
+        location,
+        freq = hits / sum(hits)
+        ) %>% #  select city and create frequency variable
+      arrange(desc(freq)) # arrange in descending order of search frequency 
+    head(highest_search_frequency, 10)
+
+    ggplot(highest_search_frequency, aes(x = reorder(location, -freq), y = freq)) +
+      geom_bar(stat = "identity", fill = "steelblue") +
+      labs(x = "City in Illinois (Location)", y = "Search Frequency for Loan", title = "Which cities have the highest search frequency for loans?") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      
+    ```
+
 -   Is there a relationship between the search intensities between the two keywords we used?
 
 Repeat the above for keywords related to covid. Make sure you use multiple keywords like we did above. Try several different combinations and think carefully about words that might make sense within this context.
