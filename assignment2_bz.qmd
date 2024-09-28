@@ -91,37 +91,15 @@ interest_by_city %>%
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
     ```
 
-*The mean of the search hits for the keyword 'crime' is 50.51, and the median is 50, with variance of 70.14. The mean of the search hits for the keyword 'loans' is 61.57, and the median is 58, with variance of 100.86.*
-
--   Which cities (locations) have the highest search frequency for `loans`? Note that there might be multiple rows for each city if there were hits for both "crime" and "loans" in that city. It might be easier to answer this question if we had the search hits info for both search terms in two separate variables. That is, each row would represent a unique city.
-
-    ```{r}
-    data_cities <- res$interest_by_city
-    head(data_cities)
-
-    data_loans <- data_cities %>% 
-      filter(keyword == "loans")
-    head(data_loans)
-
-    high_loan <- data_loans %>%
-      group_by(location) %>%
-      summarize(total_hits = sum(hits, na.rm = TRUE)) %>%
-      arrange(desc(total_hits))
-
-    high_loan
-    ```
-
-<!-- -->
-
 -   Is there a relationship between the search intensities between the two keywords we used?
 
 ```{r}
-correlation <- cor(data$hits[data$keyword == "crime"],
-                   data$hits[data$keyword == "loans"])
-correlation
+correlation <- cor(interest_over_time$hits[interest_over_time$keyword == "crime"],
+                   interest_over_time$hits[interest_over_time$keyword == "loans"])
+round(correlation,3)
 ```
 
-*There is a negative weak correlationship between these two keywords we used.*
+*There is a very negative weak correlation between the two keywords we used.*
 
 Repeat the above for keywords related to covid. Make sure you use multiple keywords like we did above. Try several different combinations and think carefully about words that might make sense within this context.
 
@@ -133,49 +111,74 @@ covid_res <- gtrends(c("unemployment", "death"),
                       time = "2020-01-01 2020-12-31",
                       low_search_volume = TRUE)
 plot(covid_res)
+covid_interest_over_time <- data.frame(covid_res$interest_over_time)
+covid_interest_by_dma <- data.frame(covid_res$interest_by_dma)
+covid_interest_by_city <- data.frame(covid_res$interest_by_city)
+head(covid_interest_over_time)
+head(covid_interest_by_dma)
+head(covid_interest_by_city)
 ```
 
+-   Find the mean, median and variance of the search hits for the covid keywords.
+
 ```{r}
-# Extract interest over time data
- data_covid <- covid_res$interest_over_time
- head(data_covid)
-
 # Calculate mean, median, and variance for each keyword
-    data_covid_hits <- data_covid %>%
-      group_by(keyword) %>%
-      summarize(
-        mean_covid_hits = mean(hits, na.rm = TRUE),
-        median_covid_hits = median(hits, na.rm = TRUE),
-        var_covid_hits = var(hits, na.rm = TRUE)
-      )
+covid_interest_over_time %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
 
-data_covid_hits
+covid_interest_by_dma %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
+
+covid_interest_by_city %>%
+  na.omit() %>%
+  group_by(keyword) %>%
+  summarise(
+    search_hits_mean = mean(hits),
+    search_hits_median = median(hits),
+    search_hits_variance = var(hits)
+  )
 ```
 
 *The mean of the search hits for the keyword 'death' is 46.28, and the median is 44, with variance of 87.94. The mean of the search hits for the keyword 'unemployment' is 35.81, and the median is 37, with variance of 577.39.*
 
+-   Which cities (locations) have the highest search frequency for death? Note that there might be multiple rows for each city if there were hits for both "unemployment" and "death" in that city. It might be easier to answer this question if we had the search hits info for both search terms in two separate variables. That is, each row would represent a unique city.
+
 ```{r}
-# Find the city with the highest search frequency for each keyword
- data_covid_cities <- covid_res$interest_by_city
-    head(data_covid_cities)
+# Find the city with the highest search frequency for each keyword###
+highest_death_frequency <- covid_interest_by_city %>% # search in city dataset
+  na.omit() %>% # remove null values
+  filter(keyword == "death") %>% # filter for only rows searches for loans
+  transmute(
+    location,
+    freq = hits / sum(hits)
+    ) %>% #  select city and create frequency variable
+  arrange(desc(freq)) # arrange in descending order of search frequency 
+head(highest_death_frequency, 10)
 
-    data_covid_death <- data_covid_cities %>% 
-      filter(keyword == "death")
-    head(data_covid_death)
-
-    high_covid_death <- data_covid_death %>%
-      group_by(location) %>%
-      summarize(total_hits = sum(hits, na.rm = TRUE)) %>%
-      arrange(desc(total_hits))
-    
-    high_covid_death
+ggplot(highest_death_frequency, aes(x = reorder(location, -freq), y = freq)) +
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(x = "City in California (Location)", y = "Search Frequency for Deaths", title = "Which cities have the highest search frequency for deaths related to Covid?") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ```{r}
 # If any correlation between search intensities of COVID related keywords
-correlation_covid <- cor(data_covid$hits[data_covid$keyword == "unemployment"],
-                       data_covid$hits[data_covid$keyword == "death"])
-    correlation_covid
+correlation_covid <- cor(covid_interest_over_time$hits[covid_interest_over_time$keyword == "unemployment"],
+                       covid_interest_over_time$hits[covid_interest_over_time$keyword == "death"])
+round(correlation_covid, 3)
 ```
 
 *There is a positive moderate correlationship between these two keywords we used.*
@@ -188,13 +191,12 @@ Now lets add another data set. The `censusapi` package provides a nice R interfa
 
 Once you have an access key, save it as a text file, then read this key in the `cs_key` object. We will use this object in all following API queries. Note that I called my text file `census-key.txt` – yours might be different!
 
-```{library(censusapi)}
-cs_key <- read_file("census-key.txt")
-```
+`{library(censusapi)} cs_key <- read_file("census-key.txt")`
 
 In the following, we request basic socio-demographic information (population, median age, median household income, income per capita) for cities and villages in the state of Illinois. Documentation for the 5-year ACS API can be found here: <https://www.census.gov/data/developers/data-sets/acs-5year.html>. The information about the variables used here can be found here: <https://api.census.gov/data/2022/acs/acs5/variables.html>.
 
 ```{r}
+cs_key <- read_file("../census-key.txt")
 acs_il <- getCensus(name = "acs/acs5",
                     vintage = 2020, 
                     vars = c("NAME", 
@@ -212,6 +214,7 @@ Convert values that represent missings to NAs.
 
 ```{r}
 acs_il[acs_il == -666666666] <- NA
+sum(is.na(acs_il))
 ```
 
 Now, it might be useful to rename the socio-demographic variables (`B01001_001E` etc.) in our data set and assign more meaningful names.
@@ -223,15 +226,17 @@ acs_il <-
          age = B06002_001E,
          hh_income = B19013_001E,
          income = B19301_001E)
+names(acs_il)
 ```
 
 It seems like we could try to use this location information listed above to merge this data set with the Google Trends data. However, we first have to clean `NAME` so that it has the same structure as `location` in the search interest by city data. Add a new variable `location` to the ACS data that only includes city names.
 
 ```{r}
 # Add a new variable 'location ' to the ACS data that only includes city names
-acs_il <- acs_il %>%
-  mutate(location = NAME, key = cs_key)
+acs_il$location <- acs_il$NAME
 acs_il$location <- sapply(strsplit(as.character(acs_il$location), ","), '[',1)
+# Use gsub() to remove suffixes like 'village', 'city', 'town', 'CDP'
+acs_il$location <- gsub("\\s+(village|city|town|CDP)$", "", acs_il$location)
 
 # Reorder columns 
 acs_il <- acs_il %>%
@@ -246,20 +251,22 @@ Answer the following questions with the "crime" and "loans" Google trends data a
 ```{r}
 # Fetch Google trends data
 acs_cities <- unique(acs_il$location)
-gtrends_cities <- unique(data_cities$location)
+gtrends_cities <- unique(interest_by_city$location)
 unmatched_cities <- setdiff(acs_cities, gtrends_cities)
 
 head(unmatched_cities)
-length(unmatched_cities)
+num_unmatched <- length(unmatched_cities)
+num_unmatched
 ```
 
-*There are 1466 cities don't appear in both data sets.*
+*There are* `num_unmatched` *cities don't appear in both data sets.*
 
 ```{r}
 # Create a new data set by joining the Google Trends and the ACS data
 # Keep 
-merge_both <- inner_join(acs_il, data_cities, by = "location")
-merge_both
+merge_both <- inner_join(acs_il, interest_by_city, by = "location")
+
+View(merge_both)
 ```
 
 -   Compute the mean of the search popularity for both keywords for cities that have an above average median household income and for those that have an below average median household income. When building your pipe, start with creating the grouping variable and then proceed with the remaining tasks. What conclusions might you draw from this?
