@@ -29,6 +29,7 @@ res <- gtrends(c("crime", "loans"),
                geo = "US-IL", 
                time = "2020-01-01 2020-12-31", 
                low_search_volume = TRUE)
+plot(res)
 interest_over_time <- data.frame(res$interest_over_time)
 interest_by_dma <- data.frame(res$interest_by_dma)
 interest_by_city <- data.frame(res$interest_by_city)
