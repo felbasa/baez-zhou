@@ -289,19 +289,37 @@ merge_both
     #             .groups = 'drop')
     # 
     # mean_keywords
+
+    avg_hh_income <- mean(merge_both$hh_income, na.rm = TRUE)
+    merge_both %>%
+      group_by(keyword) %>%
+      filter(
+        (hh_income > avg_hh_income) & (hh_income < avg_hh_income)
+      )
+      
     ```
 
+    \*There is no city in Illinois that has a median household income of \$55,208
+
+<!-- -->
+
+-   Is there a relationship between the median household income and the search popularity of the Google trends terms? Describe the relationship and use a scatterplot with `qplot()`.
+
 ```{r}
-library(ggplot2)
-# 
-# #scatterplot of median household income vs. search popularity
-# ggplot(merge_both, aes(x = hh_income,
-#                        y = hits,
-#                        color = "red"") +
-#          geom_point() +
-#          labs(title = "Relationship between \nMedian Household Income and Search Popularity",
-#               x = "Median Household Income",
-#               y = "search Popularity"))
+merge_tmp <- merge_both %>%
+  na.omit() %>%
+  select(
+    location, hh_income, hits
+  )
+  
+qplot(hh_income, hits,data =merge_tmp) + 
+  labs(title = "Relationship between Median Household Income and Search Popularity",
+             x = "Median Household Income",
+             y = "Search Popularity")
 ```
 
 Repeat the above steps using the covid data and the ACS data.
+
+-   First, check how many cities don't appear in both data sets, i.e. cannot be matched. Then, create a new data set by joining the Google Trends and the ACS data. Keep only cities that appear in both data sets.
+-   Compute the mean of the search popularity for both keywords for cities that have an above average median household income and for those that have an below average median household income. When building your pipe, start with creating the grouping variable and then proceed with the remaining tasks. What conclusions might you draw from this?
+-   Is there a relationship between the median household income and the search popularity of the Google trends terms? Describe the relationship and use a scatterplot with `qplot()`.
