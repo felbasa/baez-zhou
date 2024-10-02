@@ -5,8 +5,6 @@ format: html
 editor: visual
 ---
 
-## 
-
 You may work in pairs or individually for this assignment. Make sure you join a group in Canvas if you are working in pairs. Turn in this assignment as an HTML or PDF file to ELMS. Make sure to include the R Markdown or Quarto file that was used to generate it.
 
 ```{r, message = FALSE}
@@ -37,7 +35,6 @@ head(interest_over_time)
 head(interest_by_dma)
 head(interest_by_city)
 ```
-
 Answer the following questions for the keywords "crime" and "loans".
 
 -   Find the mean, median and variance of the search hits for the keywords.
@@ -83,7 +80,9 @@ interest_by_city %>%
         location,
         freq = hits / sum(hits)
         ) %>% #  select city and create frequency variable
-      arrange(desc(freq)) # arrange in descending order of search frequency 
+      arrange(desc(freq)) %>% # arrange in descending order of search frequency 
+      head(15)
+      
     head(highest_search_frequency, 10)
 
     ggplot(highest_search_frequency, 
@@ -97,7 +96,7 @@ interest_by_city %>%
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
     ```
 
-    *Long Lake has the highest search frequency for `loans`.*
+*Long Lake has the highest search frequency for `loans`*
 
 -   Is there a relationship between the search intensities between the two keywords we used?
 
@@ -172,7 +171,8 @@ highest_death_frequency <- covid_interest_by_city %>% # search in city dataset
     location,
     freq = hits / sum(hits)
     ) %>% #  select city and create frequency variable
-  arrange(desc(freq)) # arrange in descending order of search frequency 
+  arrange(desc(freq)) %>% # arrange in descending order of search frequency 
+  head(15)
 head(highest_death_frequency, 10)
 
 ggplot(highest_death_frequency, 
@@ -252,7 +252,7 @@ acs_il$location <- gsub("\\s+(village|city|town|CDP)$", "", acs_il$location)
 # Reorder columns 
 acs_il <- acs_il %>%
   select(state, place, location, pop, age, hh_income, income)
-acs_il
+head(acs_il)
 ```
 
 Answer the following questions with the "crime" and "loans" Google trends data and the ACS data.
@@ -274,34 +274,33 @@ num_unmatched
 
 ```{r}
 # Create a new data set by joining the Google Trends and the ACS data
-# Keep 
 merge_both <- inner_join(acs_il, interest_by_city, by = "location")
-merge_both
+head(merge_both)
 ```
 
 -   Compute the mean of the search popularity for both keywords for cities that have an above average median household income and for those that have an below average median household income. When building your pipe, start with creating the grouping variable and then proceed with the remaining tasks. What conclusions might you draw from this?
 
     ```{r}
-    # mean_keywords <- merge_both %>%
-    #   mutate(income = ifelse(hh_income > mean(hh_income, na.rm = TRUE), "Above Average", "Below Average")) %>%
-    #   group_by(income, keyword) %>%
-    #   summarise(mean_hits = mean(hits, na.rm = TRUE),
-    #             .groups = 'drop')
-    # 
-    # mean_keywords
-
-    avg_hh_income <- mean(merge_both$hh_income, na.rm = TRUE)
-    merge_both %>%
-      group_by(keyword) %>%
-      filter(
-        (hh_income > avg_hh_income) & (hh_income < avg_hh_income)
-      )
+      avg_hh_income <- mean(merge_both$hh_income, na.rm = TRUE)
+      
+      income_cat_keyword <- merge_both %>%
+      na.omit() %>%
+      mutate(income_category = ifelse(hh_income > avg_hh_income, "Above Average", "Below Average")) %>%
+      group_by(income_category, keyword) %>%
+      summarize(mean_popularity = mean(hits, na.rm = TRUE))
+      income_cat_keyword
+      # Create the bar plot
+    ggplot(income_cat_keyword, aes(x = keyword, y = mean_popularity, fill = income_category)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      labs(title = "Mean Search Popularity by Income Category and Keyword",
+       x = "Keyword",
+       y = "Mean Search Popularity",
+       fill = "Income Category") +
+      theme_minimal()
       
     ```
 
-    \*There is no city in Illinois that has a median household income of \$55,208
-
-<!-- -->
+*From the data, we observe that the search popularity for both keywords, "crime" and "loans," is slightly higher in cities with above-average household incomes compared to those with below-average incomes. Specifically, searches for "crime" are more frequent in higher-income cities (mean = 61.55) than in lower-income cities (mean = 59.29). Similarly, searches for "loans" are also more popular in above-average income cities (mean = 53.21) compared to below-average income cities (mean = 47.76).*
 
 -   Is there a relationship between the median household income and the search popularity of the Google trends terms? Describe the relationship and use a scatterplot with `qplot()`.
 
@@ -318,8 +317,65 @@ qplot(hh_income, hits,data =merge_tmp) +
              y = "Search Popularity")
 ```
 
+*The scatterplot shows a weak relationship between median household income and the search popularity of the terms. Since the points are very dispered, we see that search popularity is pretty consistent across income levels. While some higher popularity values occur in lower-income houses, there is no clear pattern linking income to search interest. We can infer that the selected search terms may appeal to a wide range of income levels.*
+
 Repeat the above steps using the covid data and the ACS data.
 
 -   First, check how many cities don't appear in both data sets, i.e. cannot be matched. Then, create a new data set by joining the Google Trends and the ACS data. Keep only cities that appear in both data sets.
+
+```{r}
+acs_cities <- unique(acs_il$location)
+covid_gtrends_cities <- unique(covid_interest_by_city$location)
+covid_unmatched_cities <- setdiff(acs_cities, covid_gtrends_cities)
+                               
+head(covid_unmatched_cities)
+covid_num_unmatched <- length(covid_unmatched_cities)
+covid_num_unmatched
+
+# Create a new data set by joining the Google Trends and the ACS data
+# Keep 
+covid_merge_both <- inner_join(acs_il, covid_interest_by_city, by = "location")
+head(covid_merge_both)
+```
+
+*We see that there are 1433 unmatched cities in the covid dataset from the acs dataset.*
+
 -   Compute the mean of the search popularity for both keywords for cities that have an above average median household income and for those that have an below average median household income. When building your pipe, start with creating the grouping variable and then proceed with the remaining tasks. What conclusions might you draw from this?
+
+```{r}
+covid_avg_hh_income <- mean(covid_merge_both$hh_income, na.rm = TRUE)
+  
+  covid_income_cat_keyword <- covid_merge_both %>%
+  na.omit() %>%
+  mutate(income_category = ifelse(hh_income > covid_avg_hh_income, "Above Average", "Below Average")) %>%
+  group_by(income_category, keyword) %>%
+  summarize(mean_popularity = mean(hits, na.rm = TRUE))
+  covid_income_cat_keyword
+  # Create the bar plot
+ggplot(covid_income_cat_keyword, aes(x = keyword, y = mean_popularity, fill = income_category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Mean Search Popularity by Income Category and Keyword",
+       x = "Keyword",
+       y = "Mean Search Popularity",
+       fill = "Income Category") +
+  theme_minimal()
+```
+
+*There were very few non-NA values for the keywords we chose, so the dataset may not be super informative. From the data, we observe that the search popularity for the keyword "unemployment" is higher in cities with below-average household incomes compared to those with above-average incomes. Specifically, searches for "unemployment" are more common in lower-income cities (mean = 57.5) than in higher-income cities (mean = 51.0). The search popularity for the keyword "death" remains the same across both income categories, with a mean of 3.0. This may indicate that while concerns about unemployment are more pronounced in lower-income areas, the interest in death is consistent regardless of income, suggesting that this issue may be relevant everywhere during the COVID-19 Pandemic.*
+
 -   Is there a relationship between the median household income and the search popularity of the Google trends terms? Describe the relationship and use a scatterplot with `qplot()`.
+
+```{r}
+covid_merge_tmp <- covid_merge_both %>%
+  na.omit() %>%
+  select(
+    location, hh_income, hits
+  )
+  
+qplot(hh_income, hits,data = covid_merge_tmp) + 
+  labs(title = "Relationship between Median Household Income and Search Popularity",
+             x = "Median Household Income",
+             y = "Search Popularity")
+```
+
+*There were very few non-NA values for the keywords we chose the scatterplot is not very informative. We can see that the datapoints are very spread out, but overall we see that search popularity suddenly increases for some middle income households, but there is very little that we can conclude from this graph.*
